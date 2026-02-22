@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>沖繩 6 天 5 夜精準自駕行程表</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        /* Custom scrollbar for cleaner look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 250px;
+            margin: 0 auto;
+        }
+        .timeline-line {
+            position: absolute;
+            left: 24px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #e2e8f0;
+            z-index: 0;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+    </style>
+    <!-- Chosen Palette: Ocean Breeze (Teal/Blue/Sand/Coral) -->
+    <!-- Application Structure Plan: 
+         1. Header: Trip Overview
+         2. Dashboard Grid (4 columns now): Flight, Car Rental, **NEW: Travel Tools (Currency & Translate)**, Trip Balance Chart.
+         3. Main Content: Tabbed Daily Itinerary with filtering. **NEW: Google Maps deep links added to each location**.
+         4. Footer: Important Reservations.
+         Rationale: Added a "Travel Tools" card at the top so the user can easily pull out their phone and convert currency while shopping without losing their place in the itinerary.
+    -->
+    <!-- Visualization & Content Choices:
+         - Currency Converter: Interactive HTML inputs with Vanilla JS bidrectional calculation. Justification: Fast, offline-capable calculation.
+         - Navigation Links: URL encoding `https://www.google.com/maps/search/?api=1&query=` attached to location data. Justification: Native integration with user's phone map app.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-teal-200 selection:text-teal-900 pb-20">
+
+    <!-- Navigation / Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🌴</span>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">沖繩精準自駕助理</h1>
+            </div>
+            <div class="text-sm font-medium text-slate-500">
+                2026/03/28 - 04/02
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Dashboard Grid -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            
+            <!-- Travel Tools Card (NEW) -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 card-hover transition-all duration-300 lg:col-span-2 row-span-2 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">🧰 實用旅遊工具</h3>
+                    <span class="px-2 py-1 bg-teal-100 text-teal-700 text-xs font-bold rounded">理財達人專用</span>
+                </div>
+                
+                <!-- Currency Converter -->
+                <div class="bg-slate-50 rounded-lg p-4 mb-4 border border-slate-200">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="font-bold text-sm text-slate-700">💱 即時匯率換算</h4>
+                        <div class="text-xs text-slate-500 flex items-center gap-1">
+                            匯率: <input type="number" id="rateInput" value="0.215" step="0.001" class="w-16 px-1 py-0.5 border rounded text-right bg-white">
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex-1">
+                            <span class="absolute left-3 top-2 text-slate-400 font-bold">¥</span>
+                            <input type="number" id="jpyInput" placeholder="輸入日幣" class="w-full pl-8 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow text-lg font-bold text-slate-700">
+                        </div>
+                        <span class="text-slate-400 font-bold">🟰</span>
+                        <div class="relative flex-1">
+                            <span class="absolute left-3 top-2 text-slate-400 font-bold">NT$</span>
+                            <input type="number" id="twdInput" placeholder="台幣金額" class="w-full pl-12 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow text-lg font-bold text-slate-700">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Translation Links -->
+                <div class="grid grid-cols-2 gap-3 mt-auto">
+                    <a href="https://translate.google.com/?sl=zh-TW&tl=ja&op=translate" target="_blank" class="flex flex-col items-center justify-center p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 transition-colors">
+                        <span class="text-2xl mb-1">🗣️</span>
+                        <span class="text-xs font-bold text-blue-700">Google 翻譯</span>
+                    </a>
+                    <button onclick="alert('實用語錄：\n\n1. 結帳：お会計をお願いします (Okaikei o onegaishimasu)\n2. 免稅：免税できますか？ (Menzei dekimasu ka?)\n3. 謝謝：ありがとうございます (Arigatou gozaimasu)')" class="flex flex-col items-center justify-center p-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-100 transition-colors">
+                        <span class="text-2xl mb-1">📝</span>
+                        <span class="text-xs font-bold text-indigo-700">生存日語卡</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Flight Card -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 card-hover transition-all duration-300">
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">✈️ 航班 (VZ568 / MM927)</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center text-sm">
+                        <div class="font-bold text-slate-800">TPE 14:45</div>
+                        <div class="text-slate-400 text-xs">3/28 去程 🛫</div>
+                        <div class="font-bold text-slate-800">17:05 OKA</div>
+                    </div>
+                    <div class="border-t border-slate-100 pt-2 flex justify-between items-center text-sm">
+                        <div class="font-bold text-slate-800">OKA 13:15</div>
+                        <div class="text-slate-400 text-xs">🛬 4/02 回程</div>
+                        <div class="font-bold text-slate-800">13:50 TPE</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Car Rental Widget -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 card-hover transition-all duration-300">
+                <div class="flex justify-between items-start mb-1">
+                    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">🚗 租車檔期</h3>
+                </div>
+                <div class="relative pt-4 pb-1">
+                    <div class="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                        <span>3/29 10:00</span>
+                        <span class="text-red-500">3/31 17:00 歸還</span>
+                    </div>
+                    <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-teal-500 w-full shadow-inner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trip Balance Chart -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 card-hover transition-all duration-300 lg:col-span-2 flex flex-col">
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">📊 行程比重 (樂園/購物/美食)</h3>
+                <div class="chart-container flex-1">
+                    <canvas id="tripChart"></canvas>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Main Interaction Area: Itinerary -->
+        <section class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-8">
+            
+            <!-- Day Tabs -->
+            <div class="flex overflow-x-auto border-b border-slate-200" id="dayTabs">
+                <!-- JavaScript will populate this -->
+            </div>
+
+            <!-- Toolbar -->
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-3 items-center justify-between">
+                <div class="text-sm font-bold text-slate-700" id="currentDateDisplay">
+                    <!-- Date will go here -->
+                </div>
+                <div class="flex gap-2">
+                    <button class="filter-btn px-3 py-1.5 rounded-full text-xs font-medium border border-slate-300 bg-white hover:bg-slate-50 transition-colors active-filter" data-filter="all">全部</button>
+                    <button class="filter-btn px-3 py-1.5 rounded-full text-xs font-medium border border-slate-300 bg-white hover:bg-slate-50 transition-colors" data-filter="spot">🎡 景點/樂園</button>
+                    <button class="filter-btn px-3 py-1.5 rounded-full text-xs font-medium border border-slate-300 bg-white hover:bg-slate-50 transition-colors" data-filter="shop">🛍️ 購物</button>
+                    <button class="filter-btn px-3 py-1.5 rounded-full text-xs font-medium border border-slate-300 bg-white hover:bg-slate-50 transition-colors" data-filter="food">🍽️ 美食</button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="p-6 min-h-[400px] relative">
+                <div id="itineraryContent" class="space-y-6 relative pl-6">
+                    <!-- Timeline Line -->
+                    <div class="timeline-line"></div>
+                    <!-- JavaScript will populate items here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Important Reservation Section -->
+        <section>
+            <h2 class="text-xl font-bold text-slate-800 mb-4">📌 重點預約與住宿</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <!-- Dinner Reservation -->
+                <div class="bg-slate-800 rounded-xl p-5 text-white shadow-md relative overflow-hidden">
+                    <div class="absolute -right-4 -bottom-4 opacity-20 text-8xl">🥩</div>
+                    <div class="relative z-10">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded">MUST EAT</span>
+                            <a href="https://www.google.com/maps/search/?api=1&query=Yakiniku+Ko-chan+Nago" target="_blank" class="bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-xs transition-colors flex items-center gap-1">📍 導航</a>
+                        </div>
+                        <h3 class="text-xl font-bold mb-1">焼肉こうちゃん (名護)</h3>
+                        <p class="text-slate-300 text-xs mb-3">Day 3 (3/30) 18:30 | 雙人套餐</p>
+                        <div class="bg-white/10 rounded-lg p-3 border border-white/10 grid grid-cols-2 gap-2 text-sm">
+                            <div><span class="text-slate-400 text-xs block">預約號碼</span><span class="font-mono font-bold text-yellow-400">DYDYZCU8ZQ</span></div>
+                            <div><span class="text-slate-400 text-xs block">預約大名</span><span class="font-bold">YU WENCHUNG</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hotel Info -->
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-slate-800 mb-3">🏨 住宿安排</h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex items-start gap-3 pb-2 border-b border-slate-100">
+                            <div class="bg-blue-100 text-blue-600 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0">1,4,5</div>
+                            <div class="flex-1">
+                                <div class="font-bold text-slate-800 flex justify-between">那霸歌町阿爾蒙特 <a href="https://www.google.com/maps/search/?api=1&query=Almont+Hotel+Naha+Omoromachi" target="_blank" class="text-blue-500 hover:underline text-xs">📍</a></div>
+                                <div class="text-xs text-slate-500 mt-1">Day 1, 4, 5 (共3晚) | 離DFS與車站近</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="bg-teal-100 text-teal-600 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0">2,3</div>
+                            <div class="flex-1">
+                                <div class="font-bold text-slate-800 flex justify-between">沖繩名護超級飯店 <a href="https://www.google.com/maps/search/?api=1&query=Super+Hotel+Okinawa+Nago" target="_blank" class="text-blue-500 hover:underline text-xs">📍</a></div>
+                                <div class="text-xs text-slate-500 mt-1">Day 2, 3 (共2晚) | 北部動線核心</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- Data Structure (Updated with Map Queries) ---
+        const itineraryData = [
+            {
+                day: 1, date: "3/28 (六)", title: "抵達那霸，輕鬆安頓",
+                activities: [
+                    { time: "14:45", title: "起飛", type: "transport", desc: "VZ568 桃園 TPE -> 那霸 OKA", icon: "✈️" },
+                    { time: "17:05", title: "抵達沖繩", type: "transport", desc: "入境、搭單軌電車至歌町站", icon: "🛬", mapQuery: "Omoromachi Station Okinawa" },
+                    { time: "19:00", title: "飯店 Check-in", type: "stay", desc: "那霸歌町阿爾蒙特飯店", icon: "🏨", mapQuery: "Almont Hotel Naha Omoromachi" },
+                    { time: "19:30", title: "晚餐與採買", type: "food", desc: "San-A 那霸 Main Place 超市採買飲料零食", icon: "🍱", mapQuery: "San-A Naha Main Place" }
+                ]
+            },
+            {
+                day: 2, date: "3/29 (日)", title: "取車出發！美式風情與生態",
+                activities: [
+                    { time: "10:00", title: "🌟 取車出發", type: "transport", desc: "歌町營業所取車", icon: "🚗", highlight: true, mapQuery: "Orix Rent a car Omoromachi" },
+                    { time: "11:00", title: "美國村", type: "spot", desc: "感受美式加州氛圍，拍照打卡", icon: "🎡", mapQuery: "American Village Okinawa" },
+                    { time: "12:30", title: "午餐", type: "food", desc: "塔可飯 或 美式漢堡", icon: "🍔" },
+                    { time: "14:30", title: "Neo Park 名護自然動植物公園", type: "spot", desc: "近距離與禽鳥動物互動", icon: "🦚", mapQuery: "Neo Park Okinawa" },
+                    { time: "17:00", title: "飯店 Check-in", type: "stay", desc: "沖繩名護超級飯店 (連住兩晚)", icon: "🏨", mapQuery: "Super Hotel Okinawa Nago" },
+                    { time: "18:00", title: "晚餐", type: "food", desc: "名護市區居酒屋或暖暮拉麵", icon: "🍜", mapQuery: "Nago City Okinawa" }
+                ]
+            },
+            {
+                day: 3, date: "3/30 (一)", title: "樂園大串連 & 頂級和牛",
+                activities: [
+                    { time: "09:30", title: "名護鳳梨園", type: "spot", desc: "搭乘鳳梨遊園車，試吃鳳梨點心", icon: "🍍", mapQuery: "Nago Pineapple Park" },
+                    { time: "11:30", title: "OKINAWA 水果樂園", type: "spot", desc: "熱帶水果體驗與解謎遊戲", icon: "🥭", mapQuery: "OKINAWA Fruits Land" },
+                    { time: "13:00", title: "午餐", type: "food", desc: "百年古家 大家 (Ufuya) 或沖繩麵", icon: "🍜", mapQuery: "Ufuya Nago" },
+                    { time: "15:00", title: "DINO 恐龍 PARK", type: "spot", desc: "尋找恐龍，買紅芋塔伴手禮", icon: "🦖", mapQuery: "DINO Dinosaur PARK Yanbaru Subtropical Forest" },
+                    { time: "18:30", title: "🌟 晚餐：焼肉こうちゃん", type: "food", desc: "黑毛和牛雙人套餐 (預約號: DYDYZCU8ZQ)", icon: "🥩", highlight: true, mapQuery: "Yakiniku Ko-chan Nago" }
+                ]
+            },
+            {
+                day: 4, date: "3/31 (二)", title: "鐘乳石洞、植物園與爆買",
+                activities: [
+                    { time: "09:00", title: "退房南下", type: "transport", desc: "離開名護往東海岸", icon: "🚗" },
+                    { time: "10:00", title: "金武觀音寺 & 日秀洞", type: "spot", desc: "古老寺廟與鐘乳石洞穴參訪", icon: "⛩️", mapQuery: "Kin Kannonji" },
+                    { time: "11:30", title: "東南植物樂園", type: "spot", desc: "亞歷山大椰子林與水豚互動", icon: "🌴", mapQuery: "Southeast Botanical Gardens Okinawa" },
+                    { time: "14:00", title: "PARCO CITY", type: "shop", desc: "最大海岸購物中心！集中採買免稅品", icon: "🛍️", highlight: true, mapQuery: "San-A Urasoe West Coast PARCO CITY" },
+                    { time: "16:15", title: "⚠️ 準備離開商場", type: "transport", desc: "注意時間，準備開車回歌町", icon: "⏰" },
+                    { time: "17:00", title: "還車", type: "transport", desc: "抵達歌町營業所還車", icon: "🏁", mapQuery: "Orix Rent a car Omoromachi" },
+                    { time: "18:30", title: "晚餐", type: "food", desc: "國際通商圈散步覓食", icon: "🍲", mapQuery: "Kokusai Dori Okinawa" }
+                ]
+            },
+            {
+                day: 5, date: "4/01 (三)", title: "那霸深度遊與質感生活",
+                activities: [
+                    { time: "10:00", title: "首里城公園", type: "spot", desc: "感受琉球歷史底蘊", icon: "🏯", mapQuery: "Shurijo Castle" },
+                    { time: "12:30", title: "牧志公設市場", type: "food", desc: "高CP值海鮮，一樓買料二樓煮", icon: "🐟", mapQuery: "Makishi Public Market" },
+                    { time: "14:30", title: "壺屋通", type: "shop", desc: "陶瓷街散步，挑選質感選物", icon: "🏺", mapQuery: "Tsuboya Yachimun Street" },
+                    { time: "16:00", title: "DFS 沖繩 T Galleria", type: "shop", desc: "免稅精品，喝咖啡覆盤投資收益", icon: "💳", mapQuery: "T Galleria by DFS, Okinawa" },
+                    { time: "18:30", title: "最後晚餐", type: "food", desc: "新都心質感居酒屋", icon: "🍻", mapQuery: "Omoromachi Okinawa" }
+                ]
+            },
+            {
+                day: 6, date: "4/02 (四)", title: "滿載而歸",
+                activities: [
+                    { time: "10:15", title: "前往機場", type: "transport", desc: "搭單軌至那霸機場", icon: "🚆", mapQuery: "Naha Airport" },
+                    { time: "10:45", title: "國內線航廈", type: "shop", desc: "最後衝刺！伴手禮款式最多", icon: "🎁" },
+                    { time: "13:15", title: "回程起飛", type: "transport", desc: "MM927 那霸 OKA -> 桃園 TPE", icon: "🛫" }
+                ]
+            }
+        ];
+
+        let state = { currentDay: 0, filter: 'all' };
+        const dayTabsContainer = document.getElementById('dayTabs');
+        const itineraryContent = document.getElementById('itineraryContent');
+        const currentDateDisplay = document.getElementById('currentDateDisplay');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+
+        // --- Currency Logic ---
+        const jpyInput = document.getElementById('jpyInput');
+        const twdInput = document.getElementById('twdInput');
+        const rateInput = document.getElementById('rateInput');
+
+        function calculateCurrency(source) {
+            const rate = parseFloat(rateInput.value) || 0.215;
+            if (source === 'jpy') {
+                const jpy = parseFloat(jpyInput.value) || 0;
+                twdInput.value = Math.round(jpy * rate);
+            } else if (source === 'twd') {
+                const twd = parseFloat(twdInput.value) || 0;
+                jpyInput.value = Math.round(twd / rate);
+            } else if (source === 'rate') {
+                if(jpyInput.value) calculateCurrency('jpy');
+            }
+        }
+        jpyInput.addEventListener('input', () => calculateCurrency('jpy'));
+        twdInput.addEventListener('input', () => calculateCurrency('twd'));
+        rateInput.addEventListener('input', () => calculateCurrency('rate'));
+
+
+        // --- Itinerary Logic ---
+        function renderTabs() {
+            dayTabsContainer.innerHTML = '';
+            itineraryData.forEach((day, index) => {
+                const btn = document.createElement('button');
+                const isActive = index === state.currentDay;
+                btn.className = `flex-none px-5 py-3 text-sm transition-colors border-b-2 whitespace-nowrap ${isActive ? 'border-teal-500 text-teal-700 bg-teal-50/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`;
+                btn.innerHTML = `<div class="font-bold">Day ${day.day}</div><div class="text-xs opacity-80">${day.date.split(' ')[0]}</div>`;
+                btn.onclick = () => { state.currentDay = index; renderTabs(); renderItinerary(); };
+                dayTabsContainer.appendChild(btn);
+            });
+        }
+
+        function renderItinerary() {
+            const dayData = itineraryData[state.currentDay];
+            currentDateDisplay.textContent = `${dayData.date} - ${dayData.title}`;
+            
+            const filteredActivities = dayData.activities.filter(act => state.filter === 'all' || act.type === state.filter);
+            itineraryContent.innerHTML = '<div class="timeline-line"></div>'; 
+
+            if (filteredActivities.length === 0) {
+                itineraryContent.innerHTML += `<div class="pl-12 py-10 text-slate-400 italic text-sm">此分類下無活動。</div>`;
+                return;
+            }
+
+            filteredActivities.forEach(act => {
+                const item = document.createElement('div');
+                item.className = 'relative flex gap-4 items-start group animate-fade-in';
+                
+                let iconColorClass = "bg-slate-100 text-slate-500";
+                if (act.type === 'food') iconColorClass = "bg-orange-100 text-orange-600";
+                if (act.type === 'shop') iconColorClass = "bg-pink-100 text-pink-600";
+                if (act.type === 'spot') iconColorClass = "bg-teal-100 text-teal-600";
+                if (act.type === 'transport') iconColorClass = "bg-blue-100 text-blue-600";
+                if (act.type === 'stay') iconColorClass = "bg-indigo-100 text-indigo-600";
+
+                const highlightClass = act.highlight ? "border-amber-200 bg-amber-50/30" : "border-slate-100 bg-white";
+                
+                // Map Link Generator
+                const mapLink = act.mapQuery 
+                    ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(act.mapQuery)}" target="_blank" class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded text-xs transition-colors flex items-center gap-1 border border-blue-100">📍 導航</a>` 
+                    : '';
+
+                item.innerHTML = `
+                    <div class="z-10 flex-none w-10 h-10 rounded-full ${iconColorClass} flex items-center justify-center text-lg shadow-sm border-2 border-white mt-1">
+                        ${act.icon}
+                    </div>
+                    <div class="flex-1 p-3 rounded-xl border ${highlightClass} shadow-sm card-hover transition-all">
+                        <div class="flex justify-between items-start mb-1 gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm md:text-base leading-tight">${act.title}</h4>
+                            <div class="flex items-center gap-2 shrink-0">
+                                ${mapLink}
+                                <span class="text-xs font-mono font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">${act.time}</span>
+                            </div>
+                        </div>
+                        <p class="text-xs md:text-sm text-slate-600 leading-relaxed mt-1">${act.desc}</p>
+                    </div>
+                `;
+                itineraryContent.appendChild(item);
+            });
+        }
+
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                filterButtons.forEach(b => b.classList.remove('bg-teal-600', 'text-white', 'border-transparent'));
+                e.target.classList.add('bg-teal-600', 'text-white', 'border-transparent');
+                state.filter = e.target.dataset.filter;
+                renderItinerary();
+            });
+        });
+        document.querySelector('[data-filter="all"]').classList.add('bg-teal-600', 'text-white', 'border-transparent');
+
+        // --- Chart.js ---
+        function initChart() {
+            const ctx = document.getElementById('tripChart').getContext('2d');
+            let counts = { spot: 0, food: 0, shop: 0 };
+            itineraryData.forEach(day => day.activities.forEach(act => { if (counts[act.type] !== undefined) counts[act.type]++; }));
+
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['樂園/景點', '購物免稅', '美食饗宴'],
+                    datasets: [{
+                        data: [counts.spot, counts.shop, counts.food],
+                        backgroundColor: ['#0d9488', '#db2777', '#f97316'],
+                        borderWidth: 0, hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8, font: {size: 11} } } },
+                    layout: { padding: 10 }
+                }
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderTabs();
+            renderItinerary();
+            initChart();
+        });
+    </script>
+</body>
+</html>
