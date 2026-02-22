@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>沖繩 6 天 5 夜背包客自駕行程表</title>
+    <title>沖繩旅行貼心助理</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
@@ -61,7 +61,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <span class="text-2xl">🌴</span>
-                <h1 class="text-xl font-bold text-slate-800 tracking-tight">沖繩精準自駕助理</h1>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">沖繩旅行貼心助理</h1>
             </div>
             <div class="text-sm font-medium text-slate-500">
                 2026/03/28 - 04/02
